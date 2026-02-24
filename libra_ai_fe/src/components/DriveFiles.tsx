@@ -28,7 +28,7 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
       const data = await resp.json();
       const ids = new Set<string>((data.files ?? []).filter((f: any) => f.lastSyncedAt).map((f: any) => f.driveFileId));
       setIngestedIds(ids);
-    } catch { }
+    } catch (e) { console.error("[drive] fetchIngestedIds failed:", e); }
   }
 
   async function loadDriveFiles() {
@@ -74,12 +74,12 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
   const busy = ingest.state === "ingesting";
 
   return (
-    <div className="border border-border rounded-xl p-4 bg-white">
+    <div className="border border-border rounded-xl p-4 bg-surface">
       <div className="text-[10px] font-semibold text-text-muted uppercase tracking-widest mb-3">Drive Files</div>
 
       {ingest.state === "ingesting" && (
-        <div className="flex items-center gap-2.5 p-3 mb-3 rounded-lg bg-indigo-50 border border-indigo-100 text-primary text-sm">
-          <div className="w-4 h-4 border-2 border-indigo-200 border-t-primary rounded-full animate-spin shrink-0" />
+        <div className="flex items-center gap-2.5 p-3 mb-3 rounded-lg bg-primary-soft border border-border text-primary text-sm">
+          <div className="w-4 h-4 border-2 border-sky-800/40 border-t-primary rounded-full animate-spin shrink-0" />
           <div>
             <div className="font-semibold">{ingest.message}</div>
             <div className="text-[11px] text-text-muted mt-0.5">Embedding and uploading vectors</div>
@@ -88,7 +88,7 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
       )}
 
       {ingest.state === "done" && (
-        <div className="mb-3 p-3 rounded-lg bg-green-50 border border-green-100">
+        <div className="mb-3 p-3 rounded-lg bg-card border border-border">
           <div className="text-xs font-semibold text-success mb-1">Indexing complete</div>
           {ingest.results.map((r) => (
             <div key={r.fileId} className="text-[11px] py-0.5">
@@ -103,7 +103,7 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
 
       {ingest.state === "error" && (
         <div className="mb-3">
-          <div className="text-[11px] text-danger bg-red-50 border border-red-100 rounded-lg px-3 py-2">{ingest.message}</div>
+          <div className="text-[11px] text-danger bg-card border border-border rounded-lg px-3 py-2">{ingest.message}</div>
           <button onClick={() => setIngest({ state: "idle" })} className="mt-2 px-2.5 py-1 text-[11px] font-medium rounded-md text-text-secondary border border-border hover:bg-card transition-all">Dismiss</button>
         </div>
       )}
@@ -123,7 +123,7 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
         )}
       </div>
 
-      {filesError && <div className="text-[11px] text-danger bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-2">{filesError}</div>}
+      {filesError && <div className="text-[11px] text-danger bg-card border border-border rounded-lg px-3 py-2 mt-2">{filesError}</div>}
 
       {enabled && hasFiles && !busy && (
         <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto mt-3">

@@ -22,7 +22,7 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "plan" && s.plan) {
           return (
             <div key={i} className="flex items-start gap-2.5 text-sm animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-indigo-50 text-primary">P</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-primary-soft text-primary">P</div>
               <div className="pt-0.5">
                 <span className="font-semibold text-text text-[13px]">Planning</span>
                 <ol className="mt-1 pl-4 text-[11px] text-text-muted list-decimal space-y-0.5">
@@ -35,7 +35,7 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "thinking") {
           return (
             <div key={i} className="flex items-center gap-2.5 text-sm text-text-secondary animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] shrink-0 bg-indigo-50 text-primary">?</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] shrink-0 bg-sky-950/30 text-primary">?</div>
               <span className="text-[13px]">Reasoning (step {s.step})...</span>
             </div>
           );
@@ -43,9 +43,9 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "tool_call") {
           return (
             <div key={i} className="flex items-start gap-2.5 text-sm animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-amber-50 text-warning">T</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-card text-warning">T</div>
               <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-primary">{s.tool}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-soft text-primary">{s.tool}</span>
                 <span className="text-[13px] text-text-secondary">{getToolLabel(s.tool ?? "")}</span>
               </div>
             </div>
@@ -54,21 +54,22 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "tool_result") {
           return (
             <div key={i} className="flex items-center gap-2.5 text-sm animate-fadein">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${s.ok ? "bg-green-50 text-success" : "bg-red-50 text-danger"}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${s.ok ? "bg-primary-soft text-success" : "bg-card text-danger"}`}>
                 {s.ok ? "\u2713" : "!"}
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-primary">{s.tool}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-950/30 text-primary">{s.tool}</span>
                 <span className="text-[13px] text-text-secondary">{s.ok ? "completed" : "failed"}</span>
               </div>
             </div>
           );
         }
         if (s.type === "llm_error" || s.type === "tool_error") {
+          const msg = (s.error ?? "").length > 200 ? (s.error ?? "").slice(0, 200) + "..." : (s.error ?? "");
           return (
-            <div key={i} className="flex items-center gap-2.5 text-sm animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-red-50 text-danger">!</div>
-              <span className="text-[13px] text-danger">{s.error}</span>
+            <div key={i} className="flex items-start gap-2.5 text-sm animate-fadein min-w-0">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-card text-danger">!</div>
+              <span className="text-[13px] text-danger break-all">{msg}</span>
             </div>
           );
         }
@@ -76,8 +77,8 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
       })}
       {props.running && (
         <div className="flex items-center gap-2.5 animate-fadein">
-          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-indigo-50">
-            <div className="w-3 h-3 border-[1.5px] border-indigo-200 border-t-primary rounded-full animate-spin" />
+          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-sky-950/30">
+            <div className="w-3 h-3 border-[1.5px] border-sky-800/40 border-t-primary rounded-full animate-spin" />
           </div>
           <div className="flex gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-dot-1" />
@@ -123,7 +124,7 @@ export function AgentRunner(props: {
         if (m.role === "user") restored.push({ role: "user", text: m.content });
         else if (m.role === "assistant") {
           try { restored.push({ role: "agent", steps: [], final: JSON.parse(m.content) as FinalEvent, running: false }); }
-          catch { restored.push({ role: "agent", steps: [], final: { summary: m.content, result: {}, citations: [], stepsTaken: 0, stoppedReason: "finished" }, running: false }); }
+          catch (e) { console.error("[agent] restore message parse failed:", e); restored.push({ role: "agent", steps: [], final: { summary: m.content, result: {}, citations: [], stepsTaken: 0, stoppedReason: "finished" }, running: false }); }
         }
       }
       setMessages(restored);
@@ -157,11 +158,11 @@ export function AgentRunner(props: {
         const data = JSON.parse(String(ev.data)) as StepEvent;
         setMessages((prev) => { const c = [...prev]; const l = c[c.length - 1]; if (l && l.role === "agent") l.steps = [...l.steps, data]; return c; });
         scrollToBottom();
-      } catch { }
+      } catch (e) { console.error("[agent] step event parse failed:", e); }
     });
 
     es.addEventListener("saved", (ev: MessageEvent) => {
-      try { const d = JSON.parse(String(ev.data)); if (d.conversationId) onConversationId(d.conversationId); } catch { }
+      try { const d = JSON.parse(String(ev.data)); if (d.conversationId) onConversationId(d.conversationId); } catch (e) { console.error("[agent] saved event parse failed:", e); }
     });
 
     es.addEventListener("final", (ev: MessageEvent) => {
@@ -169,7 +170,7 @@ export function AgentRunner(props: {
         const data = JSON.parse(String(ev.data)) as FinalEvent;
         setMessages((prev) => { const c = [...prev]; const l = c[c.length - 1]; if (l && l.role === "agent") { l.final = data; l.running = false; } return c; });
         scrollToBottom();
-      } catch { }
+      } catch (e) { console.error("[agent] final event parse failed:", e); }
       closeStream(); setIsRunning(false); onConversationSaved();
     });
 
@@ -182,13 +183,13 @@ export function AgentRunner(props: {
   return (
     <>
       {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
-          <h3 className="text-3xl md:text-4xl font-bold text-text text-center leading-tight">
-            AI That Connects Your<br />
-            <span className="italic text-primary">Knowledge</span> into <span className="italic">Clarity.</span>
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-5 md:px-4">
+          <h3 style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl sm:text-4xl md:text-6xl font-normal text-text text-center leading-tight">
+            You've Had the Answers.<br />
+            <span className="italic text-gradient">Your Files</span> Just Couldn't <span className="italic">Talk.</span>
           </h3>
-          <p className="text-sm text-text-muted max-w-lg text-center">
-            Libra AI connects all your tools, understands your data, and gets things done for you. Powered by Gemini AI.
+          <p className="text-sm sm:text-lg md:text-xl text-text-secondary text-center md:whitespace-nowrap tracking-wide leading-relaxed">
+            Connect your Google Drive.&nbsp;&nbsp;Ask anything.&nbsp;&nbsp;Get cited answers instantly.
           </p>
         </div>
       ) : (
@@ -234,17 +235,17 @@ export function AgentRunner(props: {
         </div>
       )}
 
-      <div className="px-4 md:px-7 py-4 border-t border-border bg-white">
-        <form className="flex gap-2.5 max-w-3xl mx-auto" onSubmit={onSubmit}>
+      <div className="px-3 md:px-7 py-3 md:py-4 border-t border-border bg-bg">
+        <form className="flex gap-2 md:gap-2.5 max-w-3xl mx-auto" onSubmit={onSubmit}>
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Ask something..."
             disabled={isRunning}
-            className="flex-1 px-4 py-3 rounded-xl border border-border bg-white text-text text-sm font-sans outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary-glow placeholder:text-text-muted"
+            className="flex-1 px-3 md:px-4 py-2.5 md:py-3 rounded-xl border border-border bg-surface text-text text-sm font-sans outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary-glow placeholder:text-text-muted"
           />
-          <button type="submit" disabled={!text.trim() || isRunning || disabled} className="px-6 py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-            {isRunning ? "Working..." : "Generate"}
+          <button type="submit" disabled={!text.trim() || isRunning || disabled} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0">
+            {isRunning ? "Working..." : "Send"}
           </button>
         </form>
       </div>
