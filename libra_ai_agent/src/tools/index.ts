@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { AgentState, ToolContext, ToolResult } from "../agent/types";
 
-//tool definition
 export type ToolDef<A extends z.ZodTypeAny> = {
   name: string;
   description: string;
@@ -10,14 +9,22 @@ export type ToolDef<A extends z.ZodTypeAny> = {
   run: (args: z.infer<A>, ctx: ToolContext, state: AgentState) => Promise<ToolResult>;
 };
 
-//tool store
 export function createToolRegistry() {
   const tools = new Map<string, ToolDef<any>>();
 
   return {
     register<A extends z.ZodTypeAny>(tool: ToolDef<A>) {
       tools.set(tool.name, tool);
-      return this; 
+      return this;
+    },
+
+    unregister(name: string) {
+      tools.delete(name);
+      return this;
+    },
+
+    has(name: string) {
+      return tools.has(name);
     },
 
     listForPrompt() {
@@ -32,6 +39,10 @@ export function createToolRegistry() {
       const tool = tools.get(name);
       if (!tool) throw new Error(`Unknown tool: ${name}`);
       return tool;
+    },
+
+    tryGet(name: string) {
+      return tools.get(name) ?? null;
     },
   };
 }

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+export const PlanSchema = z.object({
+  type: z.literal("plan"),
+  plan: z.array(z.string()).min(1),
+  reason: z.string().optional(),
+});
+
 export const ToolCallSchema = z.object({
   type: z.literal("tool_call"),
   tool: z.string(),
@@ -18,5 +24,5 @@ export const StopSchema = z.object({
   reason: z.string(),
 });
 
-export const LlmActionSchema = z.union([ToolCallSchema, FinalSchema, StopSchema]);
+export const LlmActionSchema = z.union([PlanSchema, ToolCallSchema, FinalSchema, StopSchema]);
 export type LlmAction = z.infer<typeof LlmActionSchema>;

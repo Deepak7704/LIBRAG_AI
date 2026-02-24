@@ -7,6 +7,9 @@ import type { AgentState } from "../agent/types";
 import { createToolRegistry } from "../tools";
 import { webSearchTool } from "../tools/webSearch";
 import { webScrapeTool } from "../tools/webScrape";
+import { driveRetrieveTool } from "../tools/driveRetrieve";
+import { vectorSearchTool } from "../tools/vectorSearch";
+import { prisma } from "../../lib/prisma";
 
 export const agentRouter = Router();
 
@@ -16,27 +19,54 @@ function firstQueryValue(v: unknown): string | undefined {
   return undefined;
 }
 
+async function saveToConversation(
+  userId: string,
+  conversationId: string | undefined,
+  task: string,
+  final: any
+): Promise<string> {
+  let convId = conversationId;
+
+  if (!convId) {
+    const conv = await prisma.conversation.create({
+      data: { userId, title: task.slice(0, 120) },
+    });
+    convId = conv.id;
+  }
+
+  await prisma.message.createMany({
+    data: [
+      { conversationId: convId, role: "user", content: task },
+      { conversationId: convId, role: "assistant", content: JSON.stringify(final) },
+    ],
+  });
+
+  return convId;
+}
+
 async function runAgentSSE(opts: {
   task: string;
   maxSteps: number;
   userId?: string;
+  conversationId?: string;
   res: any;
 }) {
-  const { task, maxSteps, userId, res } = opts;
+  const { task, maxSteps, userId, conversationId, res } = opts;
 
   const requestId = uuidv4();
   const sse = initSSE(res);
+
   let disconnected = false;
   res.on("close", () => {
     disconnected = true;
   });
+
   sse.send("meta", { requestId });
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res
-      .status(500)
-      .json({ error: "Missing GEMINI_API_KEY in environment." });
+    res.status(500).json({ error: "Missing GEMINI_API_KEY in environment." });
+    return;
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -46,7 +76,32 @@ async function runAgentSSE(opts: {
 
   const registry = createToolRegistry()
     .register(webSearchTool)
-    .register(webScrapeTool);
+    .register(webScrapeTool)
+    .register(driveRetrieveTool)
+    .register(vectorSearchTool);
+
+  // Fetch user's ingested Drive files for context
+  let driveContext: { hasIngestedFiles: boolean; fileCount: number; fileNames: string[] } = {
+    hasIngestedFiles: false,
+    fileCount: 0,
+    fileNames: [],
+  };
+  if (userId) {
+    try {
+      const driveFiles = await prisma.driveFile.findMany({
+        where: { userId },
+        select: { name: true },
+        take: 50,
+      });
+      if (driveFiles.length > 0) {
+        driveContext = {
+          hasIngestedFiles: true,
+          fileCount: driveFiles.length,
+          fileNames: driveFiles.map((f) => f.name),
+        };
+      }
+    } catch { }
+  }
 
   const state: AgentState = {
     requestId,
@@ -55,6 +110,8 @@ async function runAgentSSE(opts: {
     step: 0,
     notes: [],
     observations: [],
+    plan: [],
+    driveContext,
   };
 
   try {
@@ -72,8 +129,18 @@ async function runAgentSSE(opts: {
         }
       },
     });
-    if (!disconnected) {
-      sse.send("final", final);
+
+    if (!disconnected) sse.send("final", final);
+
+    if (userId) {
+      try {
+        // Only save conversations for authenticated users (with Google Auth)
+        const auth = await prisma.googleAuth.findUnique({ where: { userId } });
+        if (auth) {
+          const convId = await saveToConversation(userId, conversationId, task, final);
+          if (!disconnected) sse.send("saved", { conversationId: convId });
+        }
+      } catch { }
     }
   } catch (e: any) {
     if (!disconnected) {
@@ -88,29 +155,71 @@ async function runAgentSSE(opts: {
   } finally {
     try {
       sse.close();
-    } catch {}
+    } catch { }
   }
 }
 
 agentRouter.post("/run", async (req, res) => {
-  const { task, maxSteps = 8, userId } = req.body ?? {};
+  const { task, maxSteps = 8, userId, conversationId } = req.body ?? {};
   if (!task || typeof task !== "string") {
-    return res.status(400).json({ error: "task (string) is required" });
+    res.status(400).json({ error: "task (string) is required" });
+    return;
   }
 
-  await runAgentSSE({ task, maxSteps: Number(maxSteps) || 8, userId, res });
+  await runAgentSSE({ task, maxSteps: Number(maxSteps) || 8, userId, conversationId, res });
 });
 
-// Browser-friendly SSE: EventSource can only do GET.
 agentRouter.get("/run", async (req, res) => {
   const task = firstQueryValue((req as any).query?.task);
   const maxStepsRaw = firstQueryValue((req as any).query?.maxSteps);
   const userId = firstQueryValue((req as any).query?.userId);
+  const conversationId = firstQueryValue((req as any).query?.conversationId);
 
   if (!task) {
-    return res.status(400).json({ error: "task (string) is required" });
+    res.status(400).json({ error: "task (string) is required" });
+    return;
   }
 
   const maxSteps = Math.max(1, Math.min(50, Number(maxStepsRaw) || 8));
-  await runAgentSSE({ task, maxSteps, userId, res });
+  await runAgentSSE({ task, maxSteps, userId, conversationId, res });
+});
+
+agentRouter.get("/conversations", async (req, res) => {
+  const userId = firstQueryValue((req as any).query?.userId);
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+
+  const conversations = await prisma.conversation.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+    },
+  });
+
+  res.json({ conversations });
+});
+
+agentRouter.get("/conversations/:id", async (req, res) => {
+  const { id } = req.params;
+  const userId = firstQueryValue((req as any).query?.userId);
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  if (!conversation || (userId && conversation.userId !== userId)) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+
+  res.json({ conversation });
 });
