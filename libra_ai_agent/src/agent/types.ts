@@ -41,5 +41,5 @@ export type FinalAnswer = {
   result: unknown;      
   citations: Citation[];
   stepsTaken: number;
-  stoppedReason: "finished" | "step_limit" | "error";
+  stoppedReason: "finished" | "step_limit" | "error" | "stopped";
 };
