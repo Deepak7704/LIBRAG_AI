@@ -88,7 +88,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
         });
       }
     }
-  } catch { }
+  } catch (e) { console.error("[auth] OAuth callback user merge failed:", e); }
 
   await upsertGoogleTokens(canonicalUserId, {
     access_token: tokens.access_token ?? null,

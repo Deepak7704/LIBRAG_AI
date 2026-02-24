@@ -80,7 +80,8 @@ export const vectorSearchTool: ToolDef<typeof VectorSearchArgs> = {
                             embedding
                         );
                         fetchedNeighbors.set(neighborKey, neighbors);
-                    } catch {
+                    } catch (e) {
+                        console.error("[vector_search] neighbor fetch failed:", e);
                         neighbors = { prev: null, next: null };
                     }
                 }

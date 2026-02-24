@@ -124,7 +124,8 @@ async function runAgentSSE(opts: {
         if (disconnected) return;
         try {
           sse.send("step", evt);
-        } catch {
+        } catch (e) {
+          console.error("[agent] SSE send error:", e);
           disconnected = true;
         }
       },
@@ -140,7 +141,7 @@ async function runAgentSSE(opts: {
           const convId = await saveToConversation(userId, conversationId, task, final);
           if (!disconnected) sse.send("saved", { conversationId: convId });
         }
-      } catch { }
+      } catch (e) { console.error("[agent] saveToConversation failed:", e); }
     }
   } catch (e: any) {
     if (!disconnected) {
@@ -155,7 +156,7 @@ async function runAgentSSE(opts: {
   } finally {
     try {
       sse.close();
-    } catch { }
+    } catch (e) { console.error("[agent] conversation list query failed:", e); }
   }
 }
 

@@ -132,7 +132,8 @@ export async function runAgent(opts: RunAgentOpts): Promise<FinalAnswer> {
     let tool;
     try {
       tool = registry.get(action.tool);
-    } catch {
+    } catch (e) {
+      console.error("[agent] unknown tool lookup error:", e);
       push({ type: "unknown_tool", step: state.step, tool: action.tool });
       state.notes.push(`Unknown tool requested: ${action.tool}. Use only tools listed in "Available tools".`);
       continue;

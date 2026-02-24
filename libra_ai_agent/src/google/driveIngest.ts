@@ -45,7 +45,8 @@ async function exportText(
             const textResult = await parser.getText();
             await parser.destroy();
             return textResult.text ?? "";
-        } catch {
+        } catch (e) {
+            console.error("[ingest] pdf-parse failed, falling back to raw decode:", e);
             return buf.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ");
         }
     }

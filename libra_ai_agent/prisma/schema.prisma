@@ -36,8 +36,6 @@ model GoogleAuth {
   updatedAt     DateTime @updatedAt
 }
 
-
-
 model DriveFile {
   id            String   @id @default(uuid())
   userId        String

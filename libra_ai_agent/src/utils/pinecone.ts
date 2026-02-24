@@ -70,7 +70,8 @@ export async function fetchNeighborChunks(
                 if (idx === chunkIndex - 1) prev = text;
                 if (idx === chunkIndex + 1) next = text;
             }
-        } catch {
+        } catch (e) {
+            console.error("[pinecone] neighbor chunk fetch failed:", e);
         }
     }
 
