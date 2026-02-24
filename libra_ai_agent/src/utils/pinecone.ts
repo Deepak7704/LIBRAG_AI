@@ -36,3 +36,43 @@ export async function queryVectors(
     });
     return result.matches ?? [];
 }
+
+export async function fetchNeighborChunks(
+    userId: string,
+    driveFileId: string,
+    chunkIndex: number,
+    embedding: number[]
+): Promise<{ prev: string | null; next: string | null }> {
+    const index = getIndex();
+
+    const neighborIndices = [chunkIndex - 1, chunkIndex + 1].filter((i) => i >= 0);
+    if (neighborIndices.length === 0) return { prev: null, next: null };
+
+    let prev: string | null = null;
+    let next: string | null = null;
+
+    for (const idx of neighborIndices) {
+        try {
+            const result = await index.query({
+                vector: embedding,
+                topK: 1,
+                filter: {
+                    userId: { $eq: userId },
+                    driveFileId: { $eq: driveFileId },
+                    chunkIndex: { $eq: idx },
+                },
+                includeMetadata: true,
+            });
+
+            const match = result.matches?.[0];
+            if (match?.metadata) {
+                const text = String((match.metadata as any).text ?? "");
+                if (idx === chunkIndex - 1) prev = text;
+                if (idx === chunkIndex + 1) next = text;
+            }
+        } catch {
+        }
+    }
+
+    return { prev, next };
+}

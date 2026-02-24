@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type StatusResp =
   | { connected: false }
-  | { connected: true; email: string | null };
+  | { connected: true; email: string | null; canonicalUserId: string };
 
 function getOrCreateUserId() {
   const key = "libra_user_id";
@@ -13,27 +13,41 @@ function getOrCreateUserId() {
   return id;
 }
 
+function setStoredUserId(id: string) {
+  localStorage.setItem("libra_user_id", id);
+}
+
 export function DriveConnect(props: {
   backendBase: string;
   onUserId: (id: string) => void;
   onStatus: (s: { connected: boolean; email: string }) => void;
 }) {
   const { backendBase, onUserId, onStatus } = props;
-  const userId = useMemo(() => getOrCreateUserId(), []);
+  const [userId, setUserId] = useState(() => getOrCreateUserId());
   const [status, setStatus] = useState<StatusResp | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const initializedRef = useRef(false);
 
-  async function refreshStatus() {
+  async function refreshStatus(currentId: string) {
     setLoading(true); setErr("");
     try {
       const url = new URL(`${backendBase}/auth/google/status`);
-      url.searchParams.set("userId", userId);
+      url.searchParams.set("userId", currentId);
       const res = await fetch(url.toString());
-      const data = (await res.json()) as StatusResp;
+      const data = (await res.json()) as any;
       setStatus(data);
-      const connected = !!(data as any)?.connected;
-      const email = connected && (data as any)?.email ? String((data as any).email) : "";
+      const connected = !!data?.connected;
+      const email = connected && data?.email ? String(data.email) : "";
+
+      if (connected && data.canonicalUserId && data.canonicalUserId !== currentId) {
+        setStoredUserId(data.canonicalUserId);
+        setUserId(data.canonicalUserId);
+        onUserId(data.canonicalUserId);
+      } else {
+        onUserId(currentId);
+      }
+
       onStatus({ connected, email });
     } catch (e: any) {
       setErr(String(e?.message ?? e));
@@ -58,17 +72,33 @@ export function DriveConnect(props: {
   }
 
   useEffect(() => {
-    onUserId(userId); refreshStatus();
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     const url = new URL(window.location.href);
-    if (url.searchParams.get("connected") === "1") {
+    const returnedUserId = url.searchParams.get("userId");
+    const connected = url.searchParams.get("connected");
+
+    let activeId = userId;
+
+    if (connected === "1" && returnedUserId) {
+      setStoredUserId(returnedUserId);
+      setUserId(returnedUserId);
+      activeId = returnedUserId;
+      url.searchParams.delete("connected");
+      url.searchParams.delete("userId");
+      window.history.replaceState({}, "", url.toString());
+    } else if (connected === "1") {
       url.searchParams.delete("connected");
       window.history.replaceState({}, "", url.toString());
-      refreshStatus();
     }
+
+    onUserId(activeId);
+    refreshStatus(activeId);
   }, []);
 
   const connected = !!status?.connected;
-  const email = connected && status?.connected ? status.email ?? "" : "";
+  const email = connected && (status as any)?.email ? (status as any).email : "";
 
   return (
     <div className="border border-border rounded-xl p-4 bg-white">
@@ -85,7 +115,7 @@ export function DriveConnect(props: {
             Connect Drive
           </button>
         )}
-        <button onClick={refreshStatus} disabled={loading} className="px-3 py-1.5 text-[11px] font-medium rounded-lg text-text-secondary border border-border hover:bg-card disabled:opacity-40 transition-all">
+        <button onClick={() => refreshStatus(userId)} disabled={loading} className="px-3 py-1.5 text-[11px] font-medium rounded-lg text-text-secondary border border-border hover:bg-card disabled:opacity-40 transition-all">
           Refresh
         </button>
         {connected && (

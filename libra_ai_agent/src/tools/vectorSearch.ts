@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { ToolDef } from "./index";
 import type { ToolResult, ToolContext } from "../agent/types";
 import { embedText } from "../utils/embeddings";
-import { queryVectors } from "../utils/pinecone";
+import { queryVectors, fetchNeighborChunks } from "../utils/pinecone";
 
 const VectorSearchArgs = z.object({
     query: z.string().min(3),
@@ -13,7 +13,7 @@ const VectorSearchArgs = z.object({
 export const vectorSearchTool: ToolDef<typeof VectorSearchArgs> = {
     name: "vector_search",
     description:
-        "Search over the user's ingested Google Drive documents using semantic similarity. Returns the most relevant text chunks.",
+        "Search over the user's ingested Google Drive documents using semantic similarity. Returns the most relevant text chunks with surrounding context.",
     schema: VectorSearchArgs,
     argsExample: { query: "quarterly revenue report", topK: 5 },
 
@@ -42,34 +42,69 @@ export const vectorSearchTool: ToolDef<typeof VectorSearchArgs> = {
                 args.topK
             );
 
-            if (!matches.length) {
+            const MIN_SCORE = 0.5;
+            const relevant = matches.filter((m) => (m.score ?? 0) >= MIN_SCORE);
+
+            if (!relevant.length) {
                 return {
                     ok: true,
                     content:
-                        "No matching documents found. The user may not have ingested any Drive files yet.",
+                        "No matching documents found. The user may not have ingested any Drive files yet, or the query is not related to ingested content.",
                     citations: [],
                 };
             }
 
             const lines: string[] = [];
             const citations: ToolResult["citations"] = [];
+            const fetchedNeighbors = new Map<string, { prev: string | null; next: string | null }>();
 
-            for (let i = 0; i < matches.length; i++) {
-                const m = matches[i]!;
+            for (let i = 0; i < relevant.length; i++) {
+                const m = relevant[i]!;
                 const meta = (m.metadata ?? {}) as Record<string, any>;
                 const text = String(meta.text ?? "");
                 const fileName = String(meta.fileName ?? "Unknown");
                 const driveFileId = String(meta.driveFileId ?? "");
+                const section = String(meta.section ?? "");
+                const chunkIndex = Number(meta.chunkIndex ?? 0);
+                const totalChunks = Number(meta.totalChunks ?? 1);
                 const score = m.score ?? 0;
 
+                const neighborKey = `${driveFileId}-${chunkIndex}`;
+                let neighbors = fetchedNeighbors.get(neighborKey);
+                if (!neighbors) {
+                    try {
+                        neighbors = await fetchNeighborChunks(
+                            ctx.userId,
+                            driveFileId,
+                            chunkIndex,
+                            embedding
+                        );
+                        fetchedNeighbors.set(neighborKey, neighbors);
+                    } catch {
+                        neighbors = { prev: null, next: null };
+                    }
+                }
+
+                const parts: string[] = [];
+                if (neighbors.prev) {
+                    parts.push(`[preceding context] ...${neighbors.prev.slice(-500)}`);
+                }
+                parts.push(text);
+                if (neighbors.next) {
+                    parts.push(`[following context] ${neighbors.next.slice(0, 500)}...`);
+                }
+
+                const sectionLabel = section ? ` | Section: ${section}` : "";
+                const chunkLabel = totalChunks > 1 ? ` | Chunk ${chunkIndex + 1}/${totalChunks}` : "";
+
                 lines.push(
-                    `[${i + 1}] ${fileName} (score: ${score.toFixed(3)})\n${text}`
+                    `[${i + 1}] ${fileName} (score: ${score.toFixed(3)}${sectionLabel}${chunkLabel})\n${parts.join("\n\n")}`
                 );
 
                 citations.push({
                     id: uuidv4(),
                     sourceType: "drive",
-                    title: fileName,
+                    title: section ? `${fileName} - ${section}` : fileName,
                     url: driveFileId
                         ? `https://drive.google.com/file/d/${driveFileId}/view`
                         : undefined,
@@ -79,7 +114,7 @@ export const vectorSearchTool: ToolDef<typeof VectorSearchArgs> = {
 
             return {
                 ok: true,
-                content: lines.join("\n\n"),
+                content: lines.join("\n\n---\n\n"),
                 citations,
             };
         } catch (e: any) {

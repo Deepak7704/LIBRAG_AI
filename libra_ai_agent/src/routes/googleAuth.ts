@@ -43,8 +43,8 @@ googleAuthRouter.get("/callback", async (req, res) => {
     return;
   }
 
-  const userId = consumeOAuthState(state);
-  if (!userId) {
+  const tempUserId = consumeOAuthState(state);
+  if (!tempUserId) {
     res.status(400).send("Invalid OAuth state");
     return;
   }
@@ -52,11 +52,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
   const oauth2 = createOAuthClient();
   const { tokens } = await oauth2.getToken(code);
 
-  await upsertGoogleTokens(userId, {
-    access_token: tokens.access_token ?? null,
-    refresh_token: tokens.refresh_token ?? undefined,
-    expiry_date: tokens.expiry_date ?? null,
-  });
+  let canonicalUserId = tempUserId;
 
   try {
     oauth2.setCredentials({
@@ -67,18 +63,41 @@ googleAuthRouter.get("/callback", async (req, res) => {
 
     const oauth2Api = google.oauth2({ version: "v2", auth: oauth2 });
     const me = await oauth2Api.userinfo.get();
-
     const email = me.data.email ?? null;
+
     if (email) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { email },
-      });
+      const existingUser = await prisma.user.findFirst({ where: { email } });
+
+      if (existingUser && existingUser.id !== tempUserId) {
+        canonicalUserId = existingUser.id;
+
+        await prisma.googleAuth.deleteMany({ where: { userId: tempUserId } });
+        await prisma.conversation.updateMany({
+          where: { userId: tempUserId },
+          data: { userId: canonicalUserId },
+        });
+        await prisma.driveFile.updateMany({
+          where: { userId: tempUserId },
+          data: { userId: canonicalUserId },
+        });
+        await prisma.user.deleteMany({ where: { id: tempUserId } });
+      } else {
+        await prisma.user.update({
+          where: { id: canonicalUserId },
+          data: { email },
+        });
+      }
     }
   } catch { }
 
+  await upsertGoogleTokens(canonicalUserId, {
+    access_token: tokens.access_token ?? null,
+    refresh_token: tokens.refresh_token ?? undefined,
+    expiry_date: tokens.expiry_date ?? null,
+  });
+
   const base = process.env.APP_BASE_URL || "http://localhost:5173";
-  res.redirect(`${base}/?connected=1`);
+  res.redirect(`${base}/?connected=1&userId=${canonicalUserId}`);
 });
 
 googleAuthRouter.get("/status", async (req, res) => {
@@ -90,12 +109,23 @@ googleAuthRouter.get("/status", async (req, res) => {
 
   const auth = await getGoogleAuth(userId);
   if (!auth || (!auth.accessToken && !auth.refreshToken)) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user?.email) {
+      const existingUser = await prisma.user.findFirst({
+        where: { email: user.email },
+        include: { googleAuth: true },
+      });
+      if (existingUser?.googleAuth && existingUser.id !== userId) {
+        res.json({ connected: true, email: existingUser.email, canonicalUserId: existingUser.id });
+        return;
+      }
+    }
     res.json({ connected: false });
     return;
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  res.json({ connected: true, email: user?.email ?? null });
+  res.json({ connected: true, email: user?.email ?? null, canonicalUserId: userId });
 });
 
 googleAuthRouter.post("/disconnect", async (req, res) => {
