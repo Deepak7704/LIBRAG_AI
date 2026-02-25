@@ -226,64 +226,78 @@ export function AgentRunner(props: {
           <p className="text-sm sm:text-lg md:text-xl text-text-secondary text-center md:whitespace-nowrap tracking-wide leading-relaxed relative z-10">
             Connect your Google Drive.&nbsp;&nbsp;Ask anything.&nbsp;&nbsp;Get cited answers instantly.
           </p>
+          <form className="flex gap-2 md:gap-2.5 w-full max-w-2xl mt-4 relative z-10" onSubmit={onSubmit}>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Ask something..."
+              disabled={isRunning}
+              className="flex-1 px-3 md:px-4 py-2.5 md:py-3 rounded-xl border border-border bg-surface text-text text-sm font-sans outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary-glow placeholder:text-text-muted"
+            />
+            <button type="submit" disabled={!text.trim() || isRunning || disabled} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0">
+              {isRunning ? "Working..." : "Send"}
+            </button>
+          </form>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 md:px-7 py-5 flex flex-col gap-4">
-          {messages.map((msg, i) => {
-            if (msg.role === "user") {
+        <>
+          <div className="flex-1 overflow-y-auto px-4 md:px-7 py-5 flex flex-col gap-4">
+            {messages.map((msg, i) => {
+              if (msg.role === "user") {
+                return (
+                  <div key={i} className="self-end max-w-[85%] md:max-w-xl btn-gradient text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm font-medium shadow-sm">
+                    {msg.text}
+                  </div>
+                );
+              }
+              const answer = pickAnswer(msg.final);
               return (
-                <div key={i} className="self-end max-w-[85%] md:max-w-xl btn-gradient text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm font-medium shadow-sm">
-                  {msg.text}
+                <div key={i} className="self-start max-w-[90%] md:max-w-2xl w-full">
+                  <div className="bg-surface border border-border rounded-2xl p-4 md:p-5 shadow-sm">
+                    <StepTimeline steps={msg.steps} running={msg.running} />
+                    {msg.final && (
+                      <div className={msg.steps.length ? "border-t border-border pt-3.5" : ""}>
+                        <h4 className="text-[11px] font-semibold text-primary uppercase tracking-wider mb-2">
+                          {msg.final.stoppedReason === "error" ? "Error" : "Answer"}
+                        </h4>
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words text-text">{answer}</div>
+                        {msg.final.citations?.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <h5 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1.5">Sources</h5>
+                            {msg.final.citations.map((c) =>
+                              c.url ? (
+                                <a key={c.id} href={c.url} target="_blank" rel="noreferrer" className="block text-xs text-primary hover:text-primary-hover py-0.5 transition-colors truncate">{c.title ?? c.url}</a>
+                              ) : (
+                                <span key={c.id} className="block text-xs text-text-secondary py-0.5">{c.title ?? c.id}</span>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
-            }
-            const answer = pickAnswer(msg.final);
-            return (
-              <div key={i} className="self-start max-w-[90%] md:max-w-2xl w-full">
-                <div className="bg-surface border border-border rounded-2xl p-4 md:p-5 shadow-sm">
-                  <StepTimeline steps={msg.steps} running={msg.running} />
-                  {msg.final && (
-                    <div className={msg.steps.length ? "border-t border-border pt-3.5" : ""}>
-                      <h4 className="text-[11px] font-semibold text-primary uppercase tracking-wider mb-2">
-                        {msg.final.stoppedReason === "error" ? "Error" : "Answer"}
-                      </h4>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words text-text">{answer}</div>
-                      {msg.final.citations?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <h5 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1.5">Sources</h5>
-                          {msg.final.citations.map((c) =>
-                            c.url ? (
-                              <a key={c.id} href={c.url} target="_blank" rel="noreferrer" className="block text-xs text-primary hover:text-primary-hover py-0.5 transition-colors truncate">{c.title ?? c.url}</a>
-                            ) : (
-                              <span key={c.id} className="block text-xs text-text-secondary py-0.5">{c.title ?? c.id}</span>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          <div ref={chatEndRef} />
-        </div>
-      )}
+            })}
+            <div ref={chatEndRef} />
+          </div>
 
-      <div className="px-3 md:px-7 py-3 md:py-4 border-t border-border bg-bg">
-        <form className="flex gap-2 md:gap-2.5 max-w-3xl mx-auto" onSubmit={onSubmit}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Ask something..."
-            disabled={isRunning}
-            className="flex-1 px-3 md:px-4 py-2.5 md:py-3 rounded-xl border border-border bg-surface text-text text-sm font-sans outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary-glow placeholder:text-text-muted"
-          />
-          <button type="submit" disabled={!text.trim() || isRunning || disabled} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0">
-            {isRunning ? "Working..." : "Send"}
-          </button>
-        </form>
-      </div>
+          <div className="px-3 md:px-7 py-3 md:py-4 border-t border-border bg-bg">
+            <form className="flex gap-2 md:gap-2.5 max-w-3xl mx-auto" onSubmit={onSubmit}>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Ask something..."
+                disabled={isRunning}
+                className="flex-1 px-3 md:px-4 py-2.5 md:py-3 rounded-xl border border-border bg-surface text-text text-sm font-sans outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary-glow placeholder:text-text-muted"
+              />
+              <button type="submit" disabled={!text.trim() || isRunning || disabled} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-sm font-semibold btn-gradient text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0">
+                {isRunning ? "Working..." : "Send"}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </>
   );
 }
