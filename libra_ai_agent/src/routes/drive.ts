@@ -65,6 +65,13 @@ driveRouter.post("/ingest", async (req, res) => {
     return;
   }
 
+  if (fileIds !== undefined) {
+    if (!Array.isArray(fileIds) || !fileIds.every((id: unknown) => typeof id === "string" && id.length > 0)) {
+      res.status(400).json({ error: "fileIds must be an array of non-empty strings" });
+      return;
+    }
+  }
+
   try {
     const results = await ingestDriveFiles(userId, fileIds);
     res.json({ ok: true, results });

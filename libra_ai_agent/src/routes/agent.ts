@@ -192,35 +192,45 @@ agentRouter.get("/conversations", async (req, res) => {
     return;
   }
 
-  const conversations = await prisma.conversation.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: {
-      id: true,
-      title: true,
-      createdAt: true,
-    },
-  });
+  try {
+    const conversations = await prisma.conversation.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+      },
+    });
 
-  res.json({ conversations });
+    res.json({ conversations });
+  } catch (e: any) {
+    console.error("[agent] conversation list query failed:", e);
+    res.status(500).json({ error: "Failed to load conversations" });
+  }
 });
 
 agentRouter.get("/conversations/:id", async (req, res) => {
   const { id } = req.params;
   const userId = firstQueryValue((req as any).query?.userId);
 
-  const conversation = await prisma.conversation.findUnique({
-    where: { id },
-    include: {
-      messages: { orderBy: { createdAt: "asc" } },
-    },
-  });
+  try {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      include: {
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+    });
 
-  if (!conversation || (userId && conversation.userId !== userId)) {
-    res.status(404).json({ error: "Conversation not found" });
-    return;
+    if (!conversation || (userId && conversation.userId !== userId)) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+
+    res.json({ conversation });
+  } catch (e: any) {
+    console.error("[agent] conversation detail query failed:", e);
+    res.status(500).json({ error: "Failed to load conversation" });
   }
-
-  res.json({ conversation });
 });
