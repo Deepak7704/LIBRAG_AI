@@ -13,11 +13,7 @@ import { prisma } from "../../lib/prisma";
 
 export const agentRouter = Router();
 
-function firstQueryValue(v: unknown): string | undefined {
-  if (typeof v === "string") return v;
-  if (Array.isArray(v) && typeof v[0] === "string") return v[0];
-  return undefined;
-}
+
 
 async function saveToConversation(
   userId: string,
@@ -171,10 +167,10 @@ agentRouter.post("/run", async (req, res) => {
 });
 
 agentRouter.get("/run", async (req, res) => {
-  const task = firstQueryValue((req as any).query?.task);
-  const maxStepsRaw = firstQueryValue((req as any).query?.maxSteps);
-  const userId = firstQueryValue((req as any).query?.userId);
-  const conversationId = firstQueryValue((req as any).query?.conversationId);
+  const task = req.query.task as string | undefined;
+  const maxStepsRaw = req.query.maxSteps as string | undefined;
+  const userId = req.query.userId as string | undefined;
+  const conversationId = req.query.conversationId as string | undefined;
 
   if (!task) {
     res.status(400).json({ error: "task (string) is required" });
@@ -186,7 +182,7 @@ agentRouter.get("/run", async (req, res) => {
 });
 
 agentRouter.get("/conversations", async (req, res) => {
-  const userId = firstQueryValue((req as any).query?.userId);
+  const userId = req.query.userId as string | undefined;
   if (!userId) {
     res.status(400).json({ error: "userId is required" });
     return;
@@ -213,7 +209,7 @@ agentRouter.get("/conversations", async (req, res) => {
 
 agentRouter.get("/conversations/:id", async (req, res) => {
   const { id } = req.params;
-  const userId = firstQueryValue((req as any).query?.userId);
+  const userId = req.query.userId as string | undefined;
 
   try {
     const conversation = await prisma.conversation.findUnique({

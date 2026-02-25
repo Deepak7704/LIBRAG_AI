@@ -13,14 +13,10 @@ import { prisma } from "../../lib/prisma";
 
 export const googleAuthRouter = Router();
 
-function qv(v: unknown) {
-  if (typeof v === "string") return v;
-  if (Array.isArray(v) && typeof v[0] === "string") return v[0];
-  return undefined;
-}
+
 
 googleAuthRouter.get("/start", async (req, res) => {
-  const userId = qv((req as any).query?.userId);
+  const userId = req.query.userId as string | undefined;
   if (!userId) {
     res.status(400).json({ error: "userId (string) is required" });
     return;
@@ -35,8 +31,8 @@ googleAuthRouter.get("/start", async (req, res) => {
 });
 
 googleAuthRouter.get("/callback", async (req, res) => {
-  const code = qv((req as any).query?.code) ?? "";
-  const state = qv((req as any).query?.state) ?? "";
+  const code = (req.query.code as string) ?? "";
+  const state = (req.query.state as string) ?? "";
 
   if (!code || !state) {
     res.status(400).send("Missing code or state");
@@ -101,7 +97,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
 });
 
 googleAuthRouter.get("/status", async (req, res) => {
-  const userId = qv((req as any).query?.userId);
+  const userId = req.query.userId as string | undefined;
   if (!userId) {
     res.status(400).json({ error: "userId (string) is required" });
     return;
@@ -129,7 +125,7 @@ googleAuthRouter.get("/status", async (req, res) => {
 });
 
 googleAuthRouter.post("/disconnect", async (req, res) => {
-  const userId = qv((req as any).body?.userId);
+  const userId = req.body?.userId as string | undefined;
   if (!userId) {
     res.status(400).json({ error: "userId (string) is required" });
     return;

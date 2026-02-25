@@ -5,16 +5,12 @@ import { prisma } from "../../lib/prisma";
 
 export const driveRouter = Router();
 
-function qv(v: unknown) {
-  if (typeof v === "string") return v;
-  if (Array.isArray(v) && typeof v[0] === "string") return v[0];
-  return undefined;
-}
+
 
 driveRouter.get("/list", async (req, res) => {
-  const userId = qv((req as any).query?.userId);
-  const pageToken = qv((req as any).query?.pageToken);
-  const search = qv((req as any).query?.search);
+  const userId = req.query.userId as string | undefined;
+  const pageToken = req.query.pageToken as string | undefined;
+  const search = req.query.search as string | undefined;
 
   if (!userId) {
     res.status(400).json({ error: "userId (string) is required" });
@@ -81,7 +77,7 @@ driveRouter.post("/ingest", async (req, res) => {
 });
 
 driveRouter.get("/ingest/status", async (req, res) => {
-  const userId = qv((req as any).query?.userId);
+  const userId = req.query.userId as string | undefined;
 
   if (!userId) {
     res.status(400).json({ error: "userId (string) is required" });

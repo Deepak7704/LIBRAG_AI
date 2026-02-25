@@ -1,7 +1,7 @@
 import { getDriveClient } from "./driveClient";
 import { embedTexts } from "../utils/embeddings";
 import { chunkDocument } from "../utils/embeddings";
-import { upsertVectors } from "../utils/pinecone";
+import { upsertVectors, deleteByFilter } from "../utils/pinecone";
 import { prisma } from "../../lib/prisma";
 import { createHash } from "crypto";
 import { PDFParse } from "pdf-parse";
@@ -108,6 +108,8 @@ async function ingestSingleFile(
             },
         }));
 
+        // Delete old vectors for this file before upserting (handles chunk count changes)
+        await deleteByFilter({ userId: { $eq: userId }, driveFileId: { $eq: file.id } });
         await upsertVectors(vectors);
 
         await prisma.driveFile.upsert({

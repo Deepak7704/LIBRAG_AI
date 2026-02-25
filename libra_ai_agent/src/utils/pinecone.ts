@@ -22,6 +22,11 @@ export async function upsertVectors(vectors: VectorRecord[]) {
     }
 }
 
+export async function deleteByFilter(filter: Record<string, unknown>) {
+    const index = getIndex();
+    await index.deleteMany({ filter });
+}
+
 export async function queryVectors(
     embedding: number[],
     filter: Record<string, unknown>,
