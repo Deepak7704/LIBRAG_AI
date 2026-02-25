@@ -126,16 +126,9 @@ export function App() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-surface border border-border shadow-sm flex items-center justify-center text-text-secondary hover:text-primary transition-colors"
-      >
-        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-      </button>
+      {sidebarOpen && <div className="md:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />}
 
-      {sidebarOpen && <div className="md:hidden fixed inset-0 z-30 bg-black/20" onClick={() => setSidebarOpen(false)} />}
-
-      <aside className={`w-80 bg-surface border-r border-border flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 h-screen ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+      <aside className={`w-[85vw] max-w-80 bg-surface border-r border-border flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 h-screen ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
         <div className="h-14 px-5 border-b border-border flex items-center gap-2.5 shrink-0">
           <div className="w-7 h-7 rounded-lg btn-gradient flex items-center justify-center">
             <CloudLogo className="w-4 h-4 text-white" />

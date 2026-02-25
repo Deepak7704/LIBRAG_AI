@@ -23,6 +23,17 @@
 @layer base {
   body {
     @apply bg-bg text-text font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  @media (max-width: 767px) {
+
+    input,
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 
   ::-webkit-scrollbar {
