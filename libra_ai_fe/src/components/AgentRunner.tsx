@@ -179,7 +179,7 @@ export function AgentRunner(props: {
     setMessages((prev) => [...prev, { role: "user", text: task }, { role: "agent", steps: [], final: null, running: true }]);
     setText(""); setIsRunning(true); scrollToBottom(); closeStream();
 
-    const url = new URL(`${window.location.origin}${backendBase}/agent/run`);
+    const url = new URL(`${backendBase}/agent/run`);
     url.searchParams.set("task", task);
     url.searchParams.set("maxSteps", "10");
     if (conversationId) url.searchParams.set("conversationId", conversationId);
