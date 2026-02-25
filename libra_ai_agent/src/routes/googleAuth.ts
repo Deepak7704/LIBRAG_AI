@@ -27,7 +27,7 @@ googleAuthRouter.get("/start", async (req, res) => {
   await ensureUser(tempUserId);
 
   const state = randomUUID();
-  saveOAuthState(state, tempUserId);
+  await saveOAuthState(state, tempUserId);
 
   res.redirect(buildAuthUrl(state));
 });
@@ -41,8 +41,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
     return;
   }
 
-  
-  const tempUserId = consumeOAuthState(state);
+  const tempUserId = await consumeOAuthState(state);
   if (!tempUserId) {
     res.status(400).send("Invalid OAuth state");
     return;

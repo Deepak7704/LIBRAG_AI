@@ -1,17 +1,6 @@
 import { prisma } from "../../lib/prisma";
 
-const oauthStates = new Map<string, { userId: string; createdAt: number }>();
-
 const STATE_TTL_MS = 10 * 60 * 1000;
-
-function cleanExpiredStates() {
-  const now = Date.now();
-  for (const [key, val] of oauthStates) {
-    if (now - val.createdAt > STATE_TTL_MS) {
-      oauthStates.delete(key);
-    }
-  }
-}
 
 export async function ensureUser(userId: string) {
   return prisma.user.upsert({
@@ -21,16 +10,19 @@ export async function ensureUser(userId: string) {
   });
 }
 
-export function saveOAuthState(state: string, userId: string) {
-  cleanExpiredStates();
-  oauthStates.set(state, { userId, createdAt: Date.now() });
+export async function saveOAuthState(state: string, userId: string) {
+  // Clean expired states
+  await prisma.oAuthState.deleteMany({
+    where: { createdAt: { lt: new Date(Date.now() - STATE_TTL_MS) } },
+  });
+  await prisma.oAuthState.create({ data: { state, userId } });
 }
 
-export function consumeOAuthState(state: string): string | null {
-  const entry = oauthStates.get(state);
+export async function consumeOAuthState(state: string): Promise<string | null> {
+  const entry = await prisma.oAuthState.findUnique({ where: { state } });
   if (!entry) return null;
-  oauthStates.delete(state);
-  if (Date.now() - entry.createdAt > STATE_TTL_MS) return null;
+  await prisma.oAuthState.delete({ where: { state } });
+  if (Date.now() - entry.createdAt.getTime() > STATE_TTL_MS) return null;
   return entry.userId;
 }
 

@@ -80,3 +80,9 @@ model Message {
 
   @@index([conversationId, createdAt])
 }
+
+model OAuthState {
+  state     String   @id
+  userId    String
+  createdAt DateTime @default(now())
+}
