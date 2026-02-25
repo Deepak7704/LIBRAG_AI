@@ -3,6 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "build": "npm install -g bun && bun build src/server.ts --outdir dist --target=node",
+    "start": "bun ./dist/server.js"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^25.3.0",
