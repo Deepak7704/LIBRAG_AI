@@ -1,7 +1,7 @@
 const SECRET = () => {
-    const s = process.env.JWT_SECRET;
-    if (!s) throw new Error("Missing JWT_SECRET in environment");
-    return s;
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error("Missing JWT_SECRET in environment");
+    return secret;
 };
 
 export async function signToken(userId: string): Promise<string> {

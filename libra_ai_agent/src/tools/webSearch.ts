@@ -45,11 +45,11 @@ export const webSearchTool: ToolDef<typeof WebSearchArgs> = {
       } else {
         lines.push("Top results:");
         for (let i = 0; i < results.length; i++) {
-          const r = results[i];
+          const result = results[i];
           lines.push(
-            `${i + 1}. ${r.title ?? "Untitled"}\n` +
-              `   ${r.url ?? ""}\n` +
-              `   ${(r.content ?? r.snippet ?? "").toString().slice(0, 280)}`
+            `${i + 1}. ${result.title ?? "Untitled"}\n` +
+            `   ${result.url ?? ""}\n` +
+            `   ${(result.content ?? result.snippet ?? "").toString().slice(0, 280)}`
           );
         }
       }

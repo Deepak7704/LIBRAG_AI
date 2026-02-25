@@ -59,15 +59,15 @@ export const vectorSearchTool: ToolDef<typeof VectorSearchArgs> = {
             const fetchedNeighbors = new Map<string, { prev: string | null; next: string | null }>();
 
             for (let i = 0; i < relevant.length; i++) {
-                const m = relevant[i]!;
-                const meta = (m.metadata ?? {}) as Record<string, any>;
+                const match = relevant[i]!;
+                const meta = (match.metadata ?? {}) as Record<string, any>;
                 const text = String(meta.text ?? "");
                 const fileName = String(meta.fileName ?? "Unknown");
                 const driveFileId = String(meta.driveFileId ?? "");
                 const section = String(meta.section ?? "");
                 const chunkIndex = Number(meta.chunkIndex ?? 0);
                 const totalChunks = Number(meta.totalChunks ?? 1);
-                const score = m.score ?? 0;
+                const score = match.score ?? 0;
 
                 const neighborKey = `${driveFileId}-${chunkIndex}`;
                 let neighbors = fetchedNeighbors.get(neighborKey);

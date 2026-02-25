@@ -83,8 +83,8 @@ async function ingestSingleFile(
             return { fileId: file.id, fileName: file.name, chunks: 0, status: "skipped" };
         }
 
-        const richChunks = chunkDocument(text, 2500, 200);
-        const chunkTexts = richChunks.map((c) => c.text);
+        const chunks = chunkDocument(text, 2500, 200);
+        const chunkTexts = chunks.map((c) => c.text);
 
         const batchSize = 100;
         const allEmbeddings: number[][] = [];
@@ -94,7 +94,7 @@ async function ingestSingleFile(
             allEmbeddings.push(...embeddings);
         }
 
-        const vectors = richChunks.map((chunk, i) => ({
+        const vectors = chunks.map((chunk, i) => ({
             id: `${userId}-${file.id}-${i}`,
             values: allEmbeddings[i]!,
             metadata: {
@@ -129,7 +129,7 @@ async function ingestSingleFile(
             },
         });
 
-        return { fileId: file.id, fileName: file.name, chunks: richChunks.length, status: "ok" };
+        return { fileId: file.id, fileName: file.name, chunks: chunks.length, status: "ok" };
     } catch (e: any) {
         return {
             fileId: file.id,

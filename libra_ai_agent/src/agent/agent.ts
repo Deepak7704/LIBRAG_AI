@@ -19,24 +19,24 @@ type RunAgentOpts = {
   onStep?: (event: any) => void;
 };
 
-function cleanJsonText(s: string) {
-  const t = s
+function cleanJsonText(raw: string) {
+  const cleaned = raw
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
     .trim();
 
-  const a = t.indexOf("{");
-  const b = t.lastIndexOf("}");
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
 
-  const slice = a !== -1 && b !== -1 && b > a ? t.slice(a, b + 1) : t;
+  const slice = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace ? cleaned.slice(firstBrace, lastBrace + 1) : cleaned;
 
   return slice.replace(/,\s*([}\]])/g, "$1");
 }
 
-function parseJson<T = any>(s: string): T {
-  return JSON.parse(cleanJsonText(s));
+function parseJson<T = any>(raw: string): T {
+  return JSON.parse(cleanJsonText(raw));
 }
 
 async function getAction(llm: GenerativeModel, prompt: string) {
@@ -194,17 +194,17 @@ export async function runAgent(opts: RunAgentOpts): Promise<FinalAnswer> {
 }
 
 function collectCitations(state: AgentState) {
-  const all = state.observations.flatMap((o) => o.result.citations || []);
+  const allCitations = state.observations.flatMap((o) => o.result.citations || []);
   const seen = new Set<string>();
-  const out: any[] = [];
+  const unique: any[] = [];
 
-  for (const c of all) {
-    const key = c.url ?? c.id;
+  for (const citation of allCitations) {
+    const key = citation.url ?? citation.id;
     if (!seen.has(key)) {
       seen.add(key);
-      out.push(c);
+      unique.push(citation);
     }
   }
 
-  return out;
+  return unique;
 }

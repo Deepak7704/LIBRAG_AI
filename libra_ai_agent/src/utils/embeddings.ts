@@ -75,14 +75,14 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
     return allEmbeddings;
 }
 
-export type RichChunk = {
+export type DocumentChunk = {
     text: string;
     section: string;
     chunkIndex: number;
     totalChunks: number;
 };
 
-type HeadingChunk = {
+type SectionChunk = {
     heading: string;
     content: string;
 };
@@ -108,26 +108,26 @@ export function chunkDocument(
     text: string,
     maxChars = 2500,
     overlap = 200
-): RichChunk[] {
+): DocumentChunk[] {
     const lines = text.split("\n");
     const headingStack: string[] = [];
-    const headingChunks: HeadingChunk[] = [];
+    const sections: SectionChunk[] = [];
     let currentBody: string[] = [];
 
     function flushChunk() {
         const body = currentBody.join("\n").trim();
         if (!body) return;
         const heading = headingStack.join(" > ");
-        headingChunks.push({ heading, content: body });
+        sections.push({ heading, content: body });
         currentBody = [];
     }
 
     for (const line of lines) {
-        const h = detectHeadingLevel(line);
-        if (h) {
+        const heading = detectHeadingLevel(line);
+        if (heading) {
             flushChunk();
-            while (headingStack.length >= h.level) headingStack.pop();
-            headingStack.push(h.text);
+            while (headingStack.length >= heading.level) headingStack.pop();
+            headingStack.push(heading.text);
         } else {
             currentBody.push(line);
         }
@@ -135,7 +135,7 @@ export function chunkDocument(
 
     flushChunk();
 
-    if (headingChunks.length === 0 && text.trim().length > 0) {
+    if (sections.length === 0 && text.trim().length > 0) {
         const rawChunks = splitBySizeWithOverlap(text, maxChars, overlap);
         return rawChunks.map((t, i) => ({
             text: t,
@@ -145,15 +145,15 @@ export function chunkDocument(
         }));
     }
 
-    const rawParts: { text: string; section: string }[] = [];
+    const expandedChunks: { text: string; section: string }[] = [];
 
-    for (const chunk of headingChunks) {
+    for (const chunk of sections) {
         const full = chunk.heading
             ? `${chunk.heading}\n\n${chunk.content}`
             : chunk.content;
 
         if (full.length <= maxChars) {
-            rawParts.push({ text: full, section: chunk.heading });
+            expandedChunks.push({ text: full, section: chunk.heading });
         } else {
             const parts = splitBySizeWithOverlap(
                 chunk.content,
@@ -161,7 +161,7 @@ export function chunkDocument(
                 overlap
             );
             for (const part of parts) {
-                rawParts.push({
+                expandedChunks.push({
                     text: chunk.heading ? `${chunk.heading}\n\n${part}` : part,
                     section: chunk.heading,
                 });
@@ -169,7 +169,7 @@ export function chunkDocument(
         }
     }
 
-    const filtered = rawParts.filter((c) => c.text.trim().length > 0);
+    const filtered = expandedChunks.filter((c) => c.text.trim().length > 0);
     const withOverlap = applyOverlap(filtered, overlap);
 
     return withOverlap.map((c, i) => ({
