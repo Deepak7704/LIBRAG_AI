@@ -67,8 +67,24 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
       await fetchIngestedIds();
     } catch (e: any) { setIngest({ state: "error", message: String(e?.message ?? e) }); }
   }
+  async function resyncAll() {
+    const indexedFileIds = driveFiles.filter((f) => ingestedIds.has(f.id)).map((f) => f.id);
+    if (!indexedFileIds.length || !userId) return;
+    setIngest({ state: "ingesting", message: `Re-syncing ${indexedFileIds.length} file${indexedFileIds.length > 1 ? "s" : ""}...` });
+    try {
+      const resp = await fetch(`${backendBase}/drive/ingest`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, fileIds: indexedFileIds }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) { setIngest({ state: "error", message: data.error || "Failed" }); return; }
+      setIngest({ state: "done", results: data.results ?? [] });
+      await fetchIngestedIds();
+    } catch (e: any) { setIngest({ state: "error", message: String(e?.message ?? e) }); }
+  }
 
   const uningested = driveFiles.filter((f) => !ingestedIds.has(f.id));
+  const indexedCount = driveFiles.filter((f) => ingestedIds.has(f.id)).length;
   const selectedCount = Object.keys(selectedIds).length;
   const hasFiles = driveFiles.length > 0;
   const busy = ingest.state === "ingesting";
@@ -112,6 +128,11 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
         <button onClick={loadDriveFiles} disabled={!enabled || filesLoading || busy} className="px-3 py-1.5 text-[11px] font-medium rounded-lg text-text-secondary border border-border hover:bg-card disabled:opacity-40 transition-all">
           {filesLoading ? "Loading..." : "Load Files"}
         </button>
+        {indexedCount > 0 && (
+          <button onClick={resyncAll} disabled={busy} className="px-3 py-1.5 text-[11px] font-medium rounded-lg text-primary border border-primary/30 hover:bg-primary-soft disabled:opacity-40 transition-all">
+            ↻ Re-sync ({indexedCount})
+          </button>
+        )}
         {uningested.length > 0 && (
           <>
             <button onClick={() => { const n: Record<string, boolean> = {}; uningested.forEach((f) => n[f.id] = true); setSelectedIds(n); }} disabled={busy} className="px-3 py-1.5 text-[11px] font-medium rounded-lg text-text-secondary border border-border hover:bg-card disabled:opacity-40 transition-all">All</button>
