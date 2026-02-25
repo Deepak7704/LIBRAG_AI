@@ -2,7 +2,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import type { ToolDef } from "./index";
 import type { ToolResult, ToolContext } from "../agent/types";
-import { getDriveClient } from "../google/driveClient";
+import { getDriveClient } from "../drive/driveClient";
 
 const DriveRetrieveArgs = z.object({
     fileId: z.string().min(1),

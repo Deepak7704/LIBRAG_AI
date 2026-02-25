@@ -7,8 +7,8 @@ type IngestPhase =
   | { state: "done"; results: IngestResult[] }
   | { state: "error"; message: string };
 
-export function DriveFiles(props: { backendBase: string; userId: string; enabled: boolean }) {
-  const { backendBase, userId, enabled } = props;
+export function DriveFiles(props: { backendBase: string; enabled: boolean }) {
+  const { backendBase, enabled } = props;
   const [filesLoading, setFilesLoading] = useState(false);
   const [filesError, setFilesError] = useState("");
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
@@ -18,13 +18,11 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
 
   useEffect(() => {
     setDriveFiles([]); setSelectedIds({}); setFilesError(""); setIngest({ state: "idle" }); setIngestedIds(new Set());
-  }, [userId, enabled]);
+  }, [enabled]);
 
   async function fetchIngestedIds() {
     try {
-      const url = new URL(`${backendBase}/drive/ingest/status`);
-      url.searchParams.set("userId", userId);
-      const resp = await fetch(url.toString());
+      const resp = await fetch(`${backendBase}/drive/ingest/status`, { credentials: "include" });
       const data = await resp.json();
       const ids = new Set<string>((data.files ?? []).filter((f: any) => f.lastSyncedAt).map((f: any) => f.driveFileId));
       setIngestedIds(ids);
@@ -32,12 +30,10 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
   }
 
   async function loadDriveFiles() {
-    if (!enabled || !userId) return;
+    if (!enabled) return;
     setFilesLoading(true); setFilesError("");
     try {
-      const url = new URL(`${backendBase}/drive/list`);
-      url.searchParams.set("userId", userId);
-      const resp = await fetch(url.toString());
+      const resp = await fetch(`${backendBase}/drive/list`, { credentials: "include" });
       const data = await resp.json();
       if (!resp.ok) { setFilesError(data.error || "Failed"); return; }
       setDriveFiles(Array.isArray(data.files) ? data.files : []);
@@ -53,12 +49,14 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
 
   async function ingestSelected() {
     const fileIds = Object.keys(selectedIds);
-    if (!fileIds.length || !userId) return;
+    if (!fileIds.length) return;
     setIngest({ state: "ingesting", message: `Indexing ${fileIds.length} file${fileIds.length > 1 ? "s" : ""}...` });
     try {
       const resp = await fetch(`${backendBase}/drive/ingest`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, fileIds }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fileIds }),
       });
       const data = await resp.json();
       if (!resp.ok) { setIngest({ state: "error", message: data.error || "Failed" }); return; }
@@ -67,14 +65,17 @@ export function DriveFiles(props: { backendBase: string; userId: string; enabled
       await fetchIngestedIds();
     } catch (e: any) { setIngest({ state: "error", message: String(e?.message ?? e) }); }
   }
+
   async function resyncAll() {
     const indexedFileIds = driveFiles.filter((f) => ingestedIds.has(f.id)).map((f) => f.id);
-    if (!indexedFileIds.length || !userId) return;
+    if (!indexedFileIds.length) return;
     setIngest({ state: "ingesting", message: `Re-syncing ${indexedFileIds.length} file${indexedFileIds.length > 1 ? "s" : ""}...` });
     try {
       const resp = await fetch(`${backendBase}/drive/ingest`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, fileIds: indexedFileIds }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fileIds: indexedFileIds }),
       });
       const data = await resp.json();
       if (!resp.ok) { setIngest({ state: "error", message: data.error || "Failed" }); return; }

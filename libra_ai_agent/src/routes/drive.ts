@@ -1,24 +1,20 @@
 import { Router } from "express";
-import { getDriveClient } from "../google/driveClient";
-import { ingestDriveFiles } from "../google/driveIngest";
+import { getDriveClient } from "../drive/driveClient";
+import { ingestDriveFiles } from "../drive/driveIngest";
 import { prisma } from "../../lib/prisma";
 
 export const driveRouter = Router();
 
-
-
 driveRouter.get("/list", async (req, res) => {
-  const userId = req.query.userId as string | undefined;
-  const pageToken = req.query.pageToken as string | undefined;
-  const search = req.query.search as string | undefined;
-
-  if (!userId) {
-    res.status(400).json({ error: "userId (string) is required" });
+  if (!req.userId) {
+    res.status(401).json({ error: "Not authenticated" });
     return;
   }
 
   try {
-    const drive = await getDriveClient(userId);
+    const drive = await getDriveClient(req.userId);
+    const pageToken = req.query.pageToken as string | undefined;
+    const search = req.query.search as string | undefined;
 
     const qParts = ["trashed=false"];
     if (search) {
@@ -54,12 +50,12 @@ driveRouter.get("/list", async (req, res) => {
 });
 
 driveRouter.post("/ingest", async (req, res) => {
-  const { userId, fileIds } = req.body ?? {};
-
-  if (!userId || typeof userId !== "string") {
-    res.status(400).json({ error: "userId (string) is required" });
+  if (!req.userId) {
+    res.status(401).json({ error: "Not authenticated" });
     return;
   }
+
+  const { fileIds } = req.body ?? {};
 
   if (fileIds !== undefined) {
     if (!Array.isArray(fileIds) || !fileIds.every((id: unknown) => typeof id === "string" && id.length > 0)) {
@@ -69,7 +65,7 @@ driveRouter.post("/ingest", async (req, res) => {
   }
 
   try {
-    const results = await ingestDriveFiles(userId, fileIds);
+    const results = await ingestDriveFiles(req.userId, fileIds);
     res.json({ ok: true, results });
   } catch (e: any) {
     res.status(500).json({ error: String(e?.message ?? e) });
@@ -77,15 +73,13 @@ driveRouter.post("/ingest", async (req, res) => {
 });
 
 driveRouter.get("/ingest/status", async (req, res) => {
-  const userId = req.query.userId as string | undefined;
-
-  if (!userId) {
-    res.status(400).json({ error: "userId (string) is required" });
+  if (!req.userId) {
+    res.status(401).json({ error: "Not authenticated" });
     return;
   }
 
   const files = await prisma.driveFile.findMany({
-    where: { userId },
+    where: { userId: req.userId },
     orderBy: { updatedAt: "desc" },
     select: {
       driveFileId: true,

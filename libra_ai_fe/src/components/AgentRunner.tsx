@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FinalEvent, StepEvent } from "../types";
 
-/* ── Lucide-style SVG icons for step timeline ── */
 const IconPlan = () => (
   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="14" height="18" rx="2" />
@@ -139,14 +138,13 @@ function pickAnswer(final: FinalEvent | null): string {
 
 export function AgentRunner(props: {
   backendBase: string;
-  userId: string;
   disabled: boolean;
   conversationId?: string;
   onConversationId: (id: string) => void;
   selectedConversation: { id: string; messages: { role: string; content: string }[] } | null;
   onConversationSaved: () => void;
 }) {
-  const { backendBase, userId, disabled, conversationId, onConversationId, selectedConversation, onConversationSaved } = props;
+  const { backendBase, disabled, conversationId, onConversationId, selectedConversation, onConversationSaved } = props;
 
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -177,17 +175,16 @@ export function AgentRunner(props: {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const task = text.trim();
-    if (!task || isRunning || disabled || !userId) return;
+    if (!task || isRunning || disabled) return;
     setMessages((prev) => [...prev, { role: "user", text: task }, { role: "agent", steps: [], final: null, running: true }]);
     setText(""); setIsRunning(true); scrollToBottom(); closeStream();
 
-    const url = new URL(`${backendBase}/agent/run`);
+    const url = new URL(`${window.location.origin}${backendBase}/agent/run`);
     url.searchParams.set("task", task);
     url.searchParams.set("maxSteps", "10");
-    url.searchParams.set("userId", userId);
     if (conversationId) url.searchParams.set("conversationId", conversationId);
 
-    const es = new EventSource(url.toString());
+    const es = new EventSource(url.toString(), { withCredentials: true });
     esRef.current = es;
 
     es.addEventListener("step", (ev: MessageEvent) => {

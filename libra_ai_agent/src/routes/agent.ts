@@ -13,8 +13,6 @@ import { prisma } from "../../lib/prisma";
 
 export const agentRouter = Router();
 
-
-
 async function saveToConversation(
   userId: string,
   conversationId: string | undefined,
@@ -76,7 +74,6 @@ async function runAgentSSE(opts: {
     .register(driveRetrieveTool)
     .register(vectorSearchTool);
 
-  // Fetch user's ingested Drive files for context
   let driveContext: { hasIngestedFiles: boolean; fileCount: number; fileNames: string[] } = {
     hasIngestedFiles: false,
     fileCount: 0,
@@ -131,7 +128,6 @@ async function runAgentSSE(opts: {
 
     if (userId) {
       try {
-        // Only save conversations for authenticated users (with Google Auth)
         const auth = await prisma.googleAuth.findUnique({ where: { userId } });
         if (auth) {
           const convId = await saveToConversation(userId, conversationId, task, final);
@@ -152,24 +148,13 @@ async function runAgentSSE(opts: {
   } finally {
     try {
       sse.close();
-    } catch (e) { console.error("[agent] conversation list query failed:", e); }
+    } catch (e) { console.error("[agent] SSE close failed:", e); }
   }
 }
-
-agentRouter.post("/run", async (req, res) => {
-  const { task, maxSteps = 8, userId, conversationId } = req.body ?? {};
-  if (!task || typeof task !== "string") {
-    res.status(400).json({ error: "task (string) is required" });
-    return;
-  }
-
-  await runAgentSSE({ task, maxSteps: Number(maxSteps) || 8, userId, conversationId, res });
-});
 
 agentRouter.get("/run", async (req, res) => {
   const task = req.query.task as string | undefined;
   const maxStepsRaw = req.query.maxSteps as string | undefined;
-  const userId = req.query.userId as string | undefined;
   const conversationId = req.query.conversationId as string | undefined;
 
   if (!task) {
@@ -178,19 +163,18 @@ agentRouter.get("/run", async (req, res) => {
   }
 
   const maxSteps = Math.max(1, Math.min(50, Number(maxStepsRaw) || 8));
-  await runAgentSSE({ task, maxSteps, userId, conversationId, res });
+  await runAgentSSE({ task, maxSteps, userId: req.userId, conversationId, res });
 });
 
 agentRouter.get("/conversations", async (req, res) => {
-  const userId = req.query.userId as string | undefined;
-  if (!userId) {
-    res.status(400).json({ error: "userId is required" });
+  if (!req.userId) {
+    res.status(401).json({ error: "Not authenticated" });
     return;
   }
 
   try {
     const conversations = await prisma.conversation.findMany({
-      where: { userId },
+      where: { userId: req.userId },
       orderBy: { createdAt: "desc" },
       take: 50,
       select: {
@@ -209,7 +193,6 @@ agentRouter.get("/conversations", async (req, res) => {
 
 agentRouter.get("/conversations/:id", async (req, res) => {
   const { id } = req.params;
-  const userId = req.query.userId as string | undefined;
 
   try {
     const conversation = await prisma.conversation.findUnique({
@@ -219,7 +202,7 @@ agentRouter.get("/conversations/:id", async (req, res) => {
       },
     });
 
-    if (!conversation || (userId && conversation.userId !== userId)) {
+    if (!conversation || (req.userId && conversation.userId !== req.userId)) {
       res.status(404).json({ error: "Conversation not found" });
       return;
     }

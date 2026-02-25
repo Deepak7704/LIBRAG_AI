@@ -1,31 +1,33 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { google } from "googleapis";
-import { buildAuthUrl, createOAuthClient } from "../google/oauth";
+import { buildAuthUrl, createOAuthClient } from "../drive/oauth";
 import {
   consumeOAuthState,
   ensureUser,
   getGoogleAuth,
   saveOAuthState,
   upsertGoogleTokens,
-} from "../google/tokenStore";
+} from "../drive/tokenStore";
 import { prisma } from "../../lib/prisma";
+import { signToken } from "../utils/jwt";
 
 export const googleAuthRouter = Router();
 
-
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/",
+};
 
 googleAuthRouter.get("/start", async (req, res) => {
-  const userId = req.query.userId as string | undefined;
-  if (!userId) {
-    res.status(400).json({ error: "userId (string) is required" });
-    return;
-  }
-
-  await ensureUser(userId);
+  const tempUserId = randomUUID();
+  await ensureUser(tempUserId);
 
   const state = randomUUID();
-  saveOAuthState(state, userId);
+  saveOAuthState(state, tempUserId);
 
   res.redirect(buildAuthUrl(state));
 });
@@ -92,45 +94,38 @@ googleAuthRouter.get("/callback", async (req, res) => {
     expiry_date: tokens.expiry_date ?? null,
   });
 
+  const jwt = await signToken(canonicalUserId);
+  res.cookie("session", jwt, COOKIE_OPTS);
+
   const base = process.env.APP_BASE_URL || "http://localhost:5173";
-  res.redirect(`${base}/?connected=1&userId=${canonicalUserId}`);
+  res.redirect(`${base}/?connected=1`);
 });
 
 googleAuthRouter.get("/status", async (req, res) => {
-  const userId = req.query.userId as string | undefined;
+  const userId = req.userId;
   if (!userId) {
-    res.status(400).json({ error: "userId (string) is required" });
+    res.json({ connected: false });
     return;
   }
 
   const auth = await getGoogleAuth(userId);
   if (!auth || (!auth.accessToken && !auth.refreshToken)) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user?.email) {
-      const existingUser = await prisma.user.findFirst({
-        where: { email: user.email },
-        include: { googleAuth: true },
-      });
-      if (existingUser?.googleAuth && existingUser.id !== userId) {
-        res.json({ connected: true, email: existingUser.email, canonicalUserId: existingUser.id });
-        return;
-      }
-    }
     res.json({ connected: false });
     return;
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  res.json({ connected: true, email: user?.email ?? null, canonicalUserId: userId });
+  res.json({ connected: true, email: user?.email ?? null });
 });
 
 googleAuthRouter.post("/disconnect", async (req, res) => {
-  const userId = req.body?.userId as string | undefined;
+  const userId = req.userId;
   if (!userId) {
-    res.status(400).json({ error: "userId (string) is required" });
+    res.status(401).json({ error: "Not authenticated" });
     return;
   }
 
   await prisma.googleAuth.deleteMany({ where: { userId } });
+  res.clearCookie("session", { path: "/" });
   res.json({ ok: true });
 });

@@ -4,9 +4,9 @@ import { DriveConnect } from "./components/DriveConnect";
 import { DriveFiles } from "./components/DriveFiles";
 import { AgentRunner } from "./components/AgentRunner";
 import { ConversationHistory } from "./components/ConversationHistory";
-import type { FinalEvent } from "./types";
 
-/* ── SVG icons ── */
+const API_BASE = "/api";
+
 function CloudLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -14,10 +14,6 @@ function CloudLogo({ className = "w-4 h-4" }: { className?: string }) {
     </svg>
   );
 }
-
-
-
-const API_BASE = "http://localhost:3000";
 
 type HistoryEntry = { id: string; title: string; createdAt: string };
 
@@ -63,7 +59,6 @@ function AvatarDropdown(props: { email: string; onDisconnect: () => void }) {
 }
 
 export function App() {
-  const [userId, setUserId] = useState("");
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -72,11 +67,9 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   async function loadHistory(autoSelect = false) {
-    if (!userId || !driveConnected) return;
+    if (!driveConnected) return;
     try {
-      const url = new URL(`${API_BASE}/agent/conversations`);
-      url.searchParams.set("userId", userId);
-      const resp = await fetch(url.toString());
+      const resp = await fetch(`${API_BASE}/agent/conversations`, { credentials: "include" });
       const data = await resp.json();
       const convs = data.conversations ?? [];
       setHistory(convs);
@@ -88,9 +81,7 @@ export function App() {
 
   async function viewConversation(id: string) {
     try {
-      const url = new URL(`${API_BASE}/agent/conversations/${id}`);
-      url.searchParams.set("userId", userId);
-      const resp = await fetch(url.toString());
+      const resp = await fetch(`${API_BASE}/agent/conversations/${id}`, { credentials: "include" });
       const data = await resp.json();
       setSelectedConv({ id, messages: data.conversation?.messages ?? [] });
       setCurrentConvId(id);
@@ -107,22 +98,22 @@ export function App() {
   async function handleDisconnect() {
     try {
       await fetch(`${API_BASE}/auth/google/disconnect`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        method: "POST",
+        credentials: "include",
       });
     } catch (e) { console.error("[app] disconnect failed:", e); }
     window.location.reload();
   }
 
   useEffect(() => {
-    if (userId && driveConnected) {
+    if (driveConnected) {
       loadHistory(true);
     } else {
       setHistory([]);
       setSelectedConv(null);
       setCurrentConvId(undefined);
     }
-  }, [userId, driveConnected]);
+  }, [driveConnected]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -137,8 +128,8 @@ export function App() {
         </div>
 
         <div className="p-4 flex flex-col gap-3 flex-1 overflow-y-auto">
-          <DriveConnect backendBase={API_BASE} onUserId={setUserId} onStatus={(s) => { setDriveConnected(s.connected); setDriveEmail(s.email); }} />
-          <DriveFiles backendBase={API_BASE} userId={userId} enabled={driveConnected} />
+          <DriveConnect backendBase={API_BASE} onStatus={(s) => { setDriveConnected(s.connected); setDriveEmail(s.email); }} />
+          <DriveFiles backendBase={API_BASE} enabled={driveConnected} />
           {driveConnected && <ConversationHistory history={history} onSelect={viewConversation} onNewChat={startNewChat} />}
         </div>
       </aside>
@@ -159,8 +150,7 @@ export function App() {
 
         <AgentRunner
           backendBase={API_BASE}
-          userId={userId}
-          disabled={!userId}
+          disabled={false}
           conversationId={driveConnected ? currentConvId : undefined}
           onConversationId={driveConnected ? setCurrentConvId : () => { }}
           selectedConversation={driveConnected ? selectedConv : null}

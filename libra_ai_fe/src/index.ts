@@ -2,19 +2,28 @@ import { serve } from "bun";
 import index from "./index.html";
 
 const port = Number(process.env.PORT || 5173);
+const API_TARGET = process.env.API_URL || "http://localhost:3000";
 
 const server = serve({
   port,
   routes: {
-    // Serve index.html for all unmatched routes.
+    "/api/*": async (req) => {
+      const url = new URL(req.url);
+      const target = `${API_TARGET}${url.pathname.replace("/api", "")}${url.search}`;
+      const headers = new Headers(req.headers);
+      headers.set("host", new URL(API_TARGET).host);
+      return fetch(target, {
+        method: req.method,
+        headers,
+        body: req.body,
+        redirect: "manual",
+      });
+    },
     "/*": index,
   },
 
   development: process.env.NODE_ENV !== "production" && {
-    // Enable browser hot reloading in development
     hmr: true,
-
-    // Echo console logs from the browser to the server
     console: true,
   },
 });
