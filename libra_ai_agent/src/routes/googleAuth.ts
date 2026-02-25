@@ -29,6 +29,9 @@ googleAuthRouter.get("/start", async (req, res) => {
   const state = randomUUID();
   saveOAuthState(state, tempUserId);
 
+  res.cookie("oauth_state", state, { ...COOKIE_OPTS, maxAge: 10 * 60 * 1000 });
+  res.cookie("oauth_user", tempUserId, { ...COOKIE_OPTS, maxAge: 10 * 60 * 1000 });
+
   res.redirect(buildAuthUrl(state));
 });
 
@@ -41,11 +44,26 @@ googleAuthRouter.get("/callback", async (req, res) => {
     return;
   }
 
-  const tempUserId = consumeOAuthState(state);
+  const cookieState = req.cookies?.oauth_state;
+  let tempUserId = req.cookies?.oauth_user;
+
+  // Fallback to in-memory store if cookies are not present (e.g. cross-domain strictness)
+  const memoryUserId = consumeOAuthState(state);
+  if (!cookieState || state !== cookieState) {
+    if (!memoryUserId) {
+      res.status(400).send("Invalid OAuth state");
+      return;
+    }
+    tempUserId = memoryUserId;
+  }
+
   if (!tempUserId) {
-    res.status(400).send("Invalid OAuth state");
+    res.status(400).send("Invalid OAuth state: Missing user context");
     return;
   }
+
+  res.clearCookie("oauth_state", { path: "/" });
+  res.clearCookie("oauth_user", { path: "/" });
 
   const oauth2 = createOAuthClient();
   const { tokens } = await oauth2.getToken(code);
