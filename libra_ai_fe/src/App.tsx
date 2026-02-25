@@ -5,7 +5,7 @@ import { DriveFiles } from "./components/DriveFiles";
 import { AgentRunner } from "./components/AgentRunner";
 import { ConversationHistory } from "./components/ConversationHistory";
 
-const API_BASE = import.meta.env.NEXT_PUBLIC_API_URL + "/api" || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_URL + "/api" || "http://localhost:3000";
 
 function CloudLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
