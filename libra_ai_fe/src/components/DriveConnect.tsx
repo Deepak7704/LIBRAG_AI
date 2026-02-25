@@ -21,8 +21,9 @@ export function DriveConnect(props: {
   backendBase: string;
   onUserId: (id: string) => void;
   onStatus: (s: { connected: boolean; email: string }) => void;
+  hidden?: boolean;
 }) {
-  const { backendBase, onUserId, onStatus } = props;
+  const { backendBase, onUserId, onStatus, hidden } = props;
   const [userId, setUserId] = useState(() => getOrCreateUserId());
   const [status, setStatus] = useState<StatusResp | null>(null);
   const [loading, setLoading] = useState(false);
@@ -89,6 +90,8 @@ export function DriveConnect(props: {
   }, []);
 
   const connected = !!status?.connected;
+
+  if (hidden) return null;
 
   return (
     <div className="border border-border rounded-xl p-4 bg-surface">

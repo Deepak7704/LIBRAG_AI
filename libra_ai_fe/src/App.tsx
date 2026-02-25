@@ -6,6 +6,17 @@ import { AgentRunner } from "./components/AgentRunner";
 import { ConversationHistory } from "./components/ConversationHistory";
 import type { FinalEvent } from "./types";
 
+/* ── SVG icons ── */
+function CloudLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+    </svg>
+  );
+}
+
+
+
 const API_BASE = "http://localhost:3000";
 
 type HistoryEntry = { id: string; title: string; createdAt: string };
@@ -127,7 +138,7 @@ export function App() {
       <aside className={`w-80 bg-surface border-r border-border flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 h-screen ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
         <div className="h-14 px-5 border-b border-border flex items-center gap-2.5 shrink-0">
           <div className="w-7 h-7 rounded-lg btn-gradient flex items-center justify-center">
-            <span className="text-white text-xs font-bold">L</span>
+            <CloudLogo className="w-4 h-4 text-white" />
           </div>
           <span className="text-base font-bold text-text">Libra <span className="text-gradient">AI</span></span>
         </div>
@@ -147,12 +158,7 @@ export function App() {
           >
             <svg className="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${driveConnected ? "bg-success" : "bg-text-muted"}`} />
-            <h2 className="text-xs font-medium text-text-secondary truncate">
-              {driveConnected ? "Google Drive Connected" : "Connect Google Drive to search documents"}
-            </h2>
-          </div>
+          <div className="flex-1" />
           {driveConnected && driveEmail && (
             <AvatarDropdown email={driveEmail} onDisconnect={handleDisconnect} />
           )}

@@ -1,6 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 import type { FinalEvent, StepEvent } from "../types";
 
+/* ── Lucide-style SVG icons for step timeline ── */
+const IconPlan = () => (
+  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="14" height="18" rx="2" />
+    <path d="M7 7h6M7 11h6M7 15h4" />
+  </svg>
+);
+
+const IconThinking = () => (
+  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
+    <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+  </svg>
+);
+
+const IconTool = () => (
+  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
+const IconError = () => (
+  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
 type ChatMessage =
   | { role: "user"; text: string }
   | { role: "agent"; steps: StepEvent[]; final: FinalEvent | null; running: boolean };
@@ -22,7 +59,7 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "plan" && s.plan) {
           return (
             <div key={i} className="flex items-start gap-2.5 text-sm animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-primary-soft text-primary">P</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-primary-soft text-primary"><IconPlan /></div>
               <div className="pt-0.5">
                 <span className="font-semibold text-text text-[13px]">Planning</span>
                 <ol className="mt-1 pl-4 text-[11px] text-text-muted list-decimal space-y-0.5">
@@ -35,7 +72,7 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "thinking") {
           return (
             <div key={i} className="flex items-center gap-2.5 text-sm text-text-secondary animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] shrink-0 bg-sky-950/30 text-primary">?</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-sky-950/30 text-primary"><IconThinking /></div>
               <span className="text-[13px]">Reasoning (step {s.step})...</span>
             </div>
           );
@@ -43,7 +80,7 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "tool_call") {
           return (
             <div key={i} className="flex items-start gap-2.5 text-sm animate-fadein">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-card text-warning">T</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-card text-warning"><IconTool /></div>
               <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-soft text-primary">{s.tool}</span>
                 <span className="text-[13px] text-text-secondary">{getToolLabel(s.tool ?? "")}</span>
@@ -54,8 +91,8 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
         if (s.type === "tool_result") {
           return (
             <div key={i} className="flex items-center gap-2.5 text-sm animate-fadein">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${s.ok ? "bg-primary-soft text-success" : "bg-card text-danger"}`}>
-                {s.ok ? "\u2713" : "!"}
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${s.ok ? "bg-primary-soft text-success" : "bg-card text-danger"}`}>
+                {s.ok ? <IconCheck /> : <IconError />}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-950/30 text-primary">{s.tool}</span>
@@ -68,7 +105,7 @@ function StepTimeline(props: { steps: StepEvent[]; running: boolean }) {
           const msg = (s.error ?? "").length > 200 ? (s.error ?? "").slice(0, 200) + "..." : (s.error ?? "");
           return (
             <div key={i} className="flex items-start gap-2.5 text-sm animate-fadein min-w-0">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 bg-card text-danger">!</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-card text-danger"><IconError /></div>
               <span className="text-[13px] text-danger break-all">{msg}</span>
             </div>
           );
