@@ -2,7 +2,7 @@ import { serve } from "bun";
 import index from "./index.html";
 
 const port = Number(process.env.PORT || 5173);
-const API_TARGET = (process.env.VITE_API_URL || "http://localhost:3000") + "/api";
+const API_TARGET = (process.env.VITE_API_URL || "http://localhost:3000");
 
 const server = serve({
   port,
