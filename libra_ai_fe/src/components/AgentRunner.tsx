@@ -217,12 +217,13 @@ export function AgentRunner(props: {
   return (
     <>
       {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-5 md:px-4">
-          <h3 style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl sm:text-4xl md:text-6xl font-normal text-text text-center leading-tight">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-5 md:px-4 relative overflow-hidden">
+          <div className="hero-aurora" />
+          <h3 style={{ fontFamily: "'Instrument Serif', serif" }} className="text-2xl sm:text-4xl md:text-6xl font-normal text-text text-center leading-tight relative z-10">
             You've Had the Answers.<br />
             <span className="italic text-gradient">Your Files</span> Just Couldn't <span className="italic">Talk.</span>
           </h3>
-          <p className="text-sm sm:text-lg md:text-xl text-text-secondary text-center md:whitespace-nowrap tracking-wide leading-relaxed">
+          <p className="text-sm sm:text-lg md:text-xl text-text-secondary text-center md:whitespace-nowrap tracking-wide leading-relaxed relative z-10">
             Connect your Google Drive.&nbsp;&nbsp;Ask anything.&nbsp;&nbsp;Get cited answers instantly.
           </p>
         </div>

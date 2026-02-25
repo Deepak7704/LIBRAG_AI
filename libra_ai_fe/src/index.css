@@ -105,4 +105,43 @@
   .animate-dot-3 {
     animation: pulse-dot 1.4s 0.4s infinite;
   }
+
+  @keyframes aurora {
+    0% {
+      transform: translate(-50%, -55%) scale(1);
+      opacity: 0.8;
+    }
+
+    25% {
+      transform: translate(-45%, -50%) scale(1.15);
+      opacity: 0.9;
+    }
+
+    50% {
+      transform: translate(-50%, -45%) scale(1.25);
+      opacity: 1;
+    }
+
+    75% {
+      transform: translate(-55%, -50%) scale(1.15);
+      opacity: 0.9;
+    }
+
+    100% {
+      transform: translate(-50%, -55%) scale(1);
+      opacity: 0.8;
+    }
+  }
+
+  .hero-aurora {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 160%;
+    height: 90%;
+    background: radial-gradient(ellipse at center, rgba(96, 165, 250, 0.45) 0%, rgba(59, 130, 246, 0.25) 25%, rgba(37, 99, 235, 0.12) 45%, rgba(30, 64, 175, 0.05) 65%, transparent 80%);
+    animation: aurora 8s ease-in-out infinite;
+    pointer-events: none;
+    filter: blur(40px);
+  }
 }
