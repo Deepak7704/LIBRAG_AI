@@ -20,9 +20,9 @@ app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
 app.get("/health", (_, res) => res.json({ ok: true }));
-app.use("/auth/google", authMiddleware, googleAuthRouter);
-app.use("/agent", authMiddleware, agentRouter);
-app.use("/drive", authMiddleware, driveRouter);
+app.use("/api/auth/google", authMiddleware, googleAuthRouter);
+app.use("/api/agent", authMiddleware, agentRouter);
+app.use("/api/drive", authMiddleware, driveRouter);
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {

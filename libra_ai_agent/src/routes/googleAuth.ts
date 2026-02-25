@@ -41,6 +41,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
     return;
   }
 
+  
   const tempUserId = consumeOAuthState(state);
   if (!tempUserId) {
     res.status(400).send("Invalid OAuth state");
