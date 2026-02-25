@@ -52,7 +52,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
   const oauth2 = createOAuthClient();
   const { tokens } = await oauth2.getToken(code);
 
-  let canonicalUserId = tempUserId;
+  let finalUserId = tempUserId;
 
   try {
     oauth2.setCredentials({
@@ -62,41 +62,41 @@ googleAuthRouter.get("/callback", async (req, res) => {
     });
 
     const oauth2Api = google.oauth2({ version: "v2", auth: oauth2 });
-    const me = await oauth2Api.userinfo.get();
-    const email = me.data.email ?? null;
+    const user = await oauth2Api.userinfo.get();
+    const email = user.data.email ?? null;
 
     if (email) {
       const existingUser = await prisma.user.findFirst({ where: { email } });
 
       if (existingUser && existingUser.id !== tempUserId) {
-        canonicalUserId = existingUser.id;
+        finalUserId = existingUser.id;
 
         await prisma.googleAuth.deleteMany({ where: { userId: tempUserId } });
         await prisma.conversation.updateMany({
           where: { userId: tempUserId },
-          data: { userId: canonicalUserId },
+          data: { userId: finalUserId },
         });
         await prisma.driveFile.updateMany({
           where: { userId: tempUserId },
-          data: { userId: canonicalUserId },
+          data: { userId: finalUserId },
         });
         await prisma.user.deleteMany({ where: { id: tempUserId } });
       } else {
         await prisma.user.update({
-          where: { id: canonicalUserId },
+          where: { id: finalUserId },
           data: { email },
         });
       }
     }
   } catch (e) { console.error("[auth] OAuth callback user merge failed:", e); }
 
-  await upsertGoogleTokens(canonicalUserId, {
+  await upsertGoogleTokens(finalUserId, {
     access_token: tokens.access_token ?? null,
     refresh_token: tokens.refresh_token ?? undefined,
     expiry_date: tokens.expiry_date ?? null,
   });
 
-  const jwt = await signToken(canonicalUserId);
+  const jwt = await signToken(finalUserId);
   res.cookie("session", jwt, COOKIE_OPTS);
 
   const base = process.env.APP_BASE_URL || "http://localhost:5173";
